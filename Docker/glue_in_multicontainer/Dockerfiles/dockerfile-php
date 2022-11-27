@@ -1,0 +1,29 @@
+FROM ubuntu
+
+
+ENV TZ=Asia/Dhaka \
+    DEBIAN_FRONTEND=noninteractive
+
+
+COPY ./Entrypoint/startup.sh /startup.sh
+
+WORKDIR /public_html
+
+RUN apt update && apt install \
+        lsb-release ca-certificates \
+        apt-transport-https software-properties-common \
+        curl mysql-client wget -y --no-install-recommends; \
+    apt install php8.1 php8.1-bcmath php8.1-xml \
+        php8.1-fpm php8.1-mysql php8.1-zip php8.1-intl \
+        php8.1-ldap php8.1-gd php8.1-cli php8.1-bz2 php8.1-curl \
+        php8.1-mbstring php8.1-pgsql php8.1-opcache php8.1-soap \
+        php8.1-cgi -y --no-install-recommends; \
+    #Downloading Composer
+    curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer; \
+    #Configuring PHP FPM
+    sed -i "s,listen = /run.*,listen = 9000,g" /etc/php/8.1/fpm/pool.d/www.conf; \
+    sed -i "s,error_log =.*,;error_log =,g" /etc/php/8.1/fpm/php-fpm.conf; \
+    #Setting UP Entrypoint
+    rm -rf /var/lib/apt/lists/*;
+
+RUN ["chmod", "+x", "/startup.sh"] 

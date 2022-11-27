@@ -1,0 +1,89 @@
+version: '3.3'
+
+# Container for Web Handler
+
+services:
+  webserver:
+    env_file:
+      - .env
+    depends_on:
+      - db
+    build: 
+      context: ./Dockerfiles
+      dockerfile: dockerfile-nginx
+      args:
+        - WEB_ADDRESS=${WEB_ADDRESS}
+        - REPO_LINK=${REPO_LINK}
+        - REPO_BRANCH=${REPO_BRANCH}
+        - REPO_PROJECT_FOLDER=${REPO_PROJECT_FOLDER}
+        - CNTR_BACK=${CNTR_BACK}
+        - CNTR_DB=${CNTR_DB}
+        - APP_DB=${APP_DB}
+        - APP_DB_USER=${APP_DB_USER}
+        - APP_DB_PASS=${APP_DB_PASS}
+    image: glue-frontend
+    container_name: glue-frontend
+    restart: unless-stopped
+    working_dir: /public_html
+    volumes:
+      - glue-app:/public_html
+    ports:
+      - 80:80
+    networks:
+      - glue
+
+# Backend tier start here
+  php:
+    env_file:
+      - .env
+    depends_on:
+      - webserver
+      - db
+    build:
+      context: ./Dockerfiles
+      dockerfile: dockerfile-php
+      args:
+        - APP_DB=${APP_DB}
+        - APP_DB_USER=${APP_DB_USER}
+        - APP_DB_PASS=${APP_DB_PASS}
+        - DB_DUMP_FILE=${DB_DUMP_FILE}
+        - CNTR_DB=${CNTR_DB}
+    image: glue-backend
+    container_name: glue-backend
+    restart: unless-stopped
+    working_dir: /public_html
+    volumes:
+      - glue-app:/public_html
+    expose:
+      - 9000
+    networks:
+      - glue
+    entrypoint: ["sh", "/startup.sh"]
+
+# Database Tier start Here
+  db:
+    env_file:
+      - .env
+    image: mysql
+    container_name: glue-db
+    restart: unless-stopped
+    expose:
+      - 3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PWD}
+      - MYSQL_USER=${APP_DB_USER}
+      - MYSQL_PASSWORD=${APP_DB_PASS}
+      - MYSQL_DATABASE=${APP_DB}
+    volumes:
+      - glue-db-vol:/var/lib/mysql
+    networks:
+      - glue
+
+
+
+networks:
+  glue:
+volumes:
+  glue-app:
+  glue-db-vol:
+

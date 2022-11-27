@@ -1,0 +1,45 @@
+FROM nginx:alpine
+
+ARG WEB_ADDRESS
+ARG REPO_LINK
+ARG REPO_BRANCH
+ARG REPO_PROJECT_FOLDER
+ARG CNTR_BACK
+ARG DB_HOST
+ARG CNTR_DB
+ARG APP_DB
+ARG APP_DB_USER
+ARG APP_DB_PASS
+
+COPY ./config/nginx/default.conf /etc/nginx/conf.d/default.conf
+
+WORKDIR /public_html
+
+RUN apk add git; \
+    mkdir /public_html; \
+    cd /public_html; \
+    # Git Job start here
+    git init; \
+    git remote add origin $REPO_LINK; \
+    git fetch origin; \
+    git checkout origin/$REPO_BRANCH -- $REPO_PROJECT_FOLDER; \
+    # Add user for NGINX
+    adduser -u 82 -D -S -G www-data www-data; \
+    sed -i "s/user  nginx;/user  www-data;/g" /etc/nginx/nginx.conf; \
+    # Modifying Website parameters
+    sed -i "s/IP_ADDRESS_OR_DOMAIN/$WEB_ADDRESS/g" /etc/nginx/conf.d/default.conf; \
+    sed -i "s,/public_html,/public_html/$REPO_PROJECT_FOLDER/public,g" /etc/nginx/conf.d/default.conf; \
+    sed -i "s,fastcgi_pass.*,fastcgi_pass $CNTR_BACK:9000;,g" /etc/nginx/conf.d/default.conf; \
+    # Modifying .env for project
+    sed -i "s,DB_DATABASE.*,DB_DATABASE=$APP_DB,g" /public_html/$REPO_PROJECT_FOLDER/.env; \
+    sed -i "s,DB_USERNAME.*,DB_USERNAME=$APP_DB_USER,g" /public_html/$REPO_PROJECT_FOLDER/.env; \
+    sed -i "s,DB_PASSWORD.*,DB_PASSWORD=$APP_DB_PASS,g" /public_html/$REPO_PROJECT_FOLDER/.env; \
+    sed -i "s,DB_HOST.*,DB_HOST=$CNTR_DB,g" /public_html/$REPO_PROJECT_FOLDER/.env; \
+    chown -R www-data:www-data /public_html/$REPO_PROJECT_FOLDER/storage; \
+    chown -R www-data:www-data /public_html/$REPO_PROJECT_FOLDER/bootstrap/cache;
+
+
+
+
+
+    
